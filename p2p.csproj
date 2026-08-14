@@ -14,7 +14,7 @@
     <Product>АнтиПигвин</Product>
     <AssemblyTitle>АнтиПигвин</AssemblyTitle>
     <Company>АнтиПигвин</Company>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <!-- Упаковка в один самодостаточный файл. ВАЖНО: эти свойства действуют только для publish
