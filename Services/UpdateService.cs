@@ -3,6 +3,8 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace p2p.Services;
@@ -81,11 +83,36 @@ public class UpdateService
             throw new InvalidOperationException("Скачанный файл подозрительно мал — возможно, обновление повреждено.");
 
         var scriptPath = Path.Combine(workDir, "apply_update.cmd");
+
+        // cmd.exe разбирает .cmd-файл в системной ANSI/OEM-кодовой странице, а не в UTF-8.
+        // Если путь (например, к профилю пользователя) содержит кириллицу, многобайтовые
+        // символы ломаются при парсинге и портят всю строку — move получает мусорный путь
+        // и молча ничего не делает. Короткие 8.3-имена (C:\Users\ABCDEF~1\...) состоят только
+        // из ASCII и этой проблемы не имеют — используем их для всего, что попадает в текст скрипта.
+        var target = ToShortPathSafe(currentExe);
+        var source = ToShortPathSafe(newExePath);
+        var shortWorkDir = ToShortPathSafe(workDir);
+        var logPath = Path.Combine(shortWorkDir, "apply_update.log");
         var pid = Environment.ProcessId;
+
+        // Аргументы запуска (--data-dir/--port) нужно передать перезапущенному процессу как есть —
+        // иначе релонч тихо откатится на аккаунт и порт по умолчанию вместо тех, с которыми
+        // приложение реально было запущено. Кириллица (например, в --data-dir из-под имени
+        // пользователя) точно так же ломается парсером cmd.exe, как и пути TARGET/SOURCE/LOG выше,
+        // поэтому каждый непустой ASCII аргумент тоже переводится в короткую форму.
+        var relaunchArgs = string.Join(' ', Environment.GetCommandLineArgs().Skip(1).Select(SanitizeArgForBatch));
+
+        // Два ретрай-цикла, не один: после того как процесс пропал из tasklist, Windows иногда
+        // ещё долю секунды держит файл образа заблокированным (memory-mapped image), и move,
+        // выполненный слишком рано, молча проваливается — тогда скрипт просто перезапускал
+        // СТАРЫЙ exe, ничего не заменив. Теперь move тоже повторяется, пока файл не станет
+        // свободен, с ограничением попыток и логом на случай, если он никогда не освободится.
         var script = $@"@echo off
 setlocal
-set TARGET=""{currentExe}""
-set SOURCE=""{newExePath}""
+set TARGET=""{target}""
+set SOURCE=""{source}""
+set LOG=""{logPath}""
+set ARGS={relaunchArgs}
 
 :wait
 tasklist /FI ""PID eq {pid}"" | find ""{pid}"" >nul
@@ -94,8 +121,22 @@ if not errorlevel 1 (
     goto wait
 )
 
-move /y %SOURCE% %TARGET% >nul
-start """" %TARGET%
+set /a TRIES=0
+:trymove
+set /a TRIES+=1
+move /y %SOURCE% %TARGET% >%LOG% 2>&1
+if errorlevel 1 (
+    if %TRIES% GEQ 15 (
+        echo update failed after %TRIES% attempts >>%LOG%
+        start """" %TARGET% %ARGS%
+        del ""%~f0""
+        exit /b 1
+    )
+    timeout /t 1 /nobreak >nul
+    goto trymove
+)
+
+start """" %TARGET% %ARGS%
 del ""%~f0""
 ";
         await File.WriteAllTextAsync(scriptPath, script, ct);
@@ -106,6 +147,41 @@ del ""%~f0""
             UseShellExecute = false,
             WindowStyle = ProcessWindowStyle.Hidden
         });
+    }
+
+    private static string QuoteArg(string arg) =>
+        arg.Contains(' ') ? $"\"{arg}\"" : arg;
+
+    /// <summary>Если аргумент похож на путь (содержит не-ASCII символы и существует на диске —
+    /// на момент вызова --data-dir уже точно создан текущим запуском), переводит его в короткое
+    /// 8.3-имя по той же причине, что и TARGET/SOURCE/LOG.</summary>
+    private static string SanitizeArgForBatch(string arg)
+    {
+        if (arg.Any(c => c > 127) && Directory.Exists(arg))
+            arg = ToShortPathSafe(arg);
+
+        return QuoteArg(arg);
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetShortPathName(string longPath, StringBuilder shortPath, int bufferSize);
+
+    /// <summary>Короткое 8.3-имя пути (чистый ASCII) — требуется, чтобы путь пережил разбор
+    /// в системной кодовой странице cmd.exe. Работает только для уже существующих на диске
+    /// путей; если по какой-то причине короткое имя получить не удалось, возвращает исходный
+    /// путь — тогда скрипт может не сработать на нестандартных путях, но это лучше исключения.</summary>
+    private static string ToShortPathSafe(string longPath)
+    {
+        try
+        {
+            var buffer = new StringBuilder(short.MaxValue);
+            var length = GetShortPathName(longPath, buffer, buffer.Capacity);
+            return length > 0 ? buffer.ToString(0, length) : longPath;
+        }
+        catch
+        {
+            return longPath;
+        }
     }
 
     private static async Task DownloadFileAsync(string url, string destination, IProgress<double>? progress, CancellationToken ct)

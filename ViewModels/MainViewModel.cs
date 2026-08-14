@@ -377,7 +377,9 @@ public partial class MainViewModel : ObservableObject
             return;
 
         _pendingUpdate = info;
-        UpdateBannerText = $"Доступна новая версия {info.Version} (сейчас {_updates.CurrentVersion})";
+        // ToString(3): у AssemblyVersion всегда 4 компонента (Major.Minor.Build.Revision), а из
+        // тега релиза парсится обычно 3 — без этого в баннере рядом красовалось бы "1.0.0 (сейчас 0.9.0.0)".
+        UpdateBannerText = $"Доступна новая версия {info.Version.ToString(3)} (сейчас {_updates.CurrentVersion.ToString(3)})";
         UpdateAvailable = true;
     }
 
