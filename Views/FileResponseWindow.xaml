@@ -1,0 +1,22 @@
+<Window x:Class="p2p.Views.FileResponseWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Входящий файл" Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        FocusManager.FocusedElement="{Binding ElementName=CommentBox}">
+    <StackPanel Margin="24">
+        <TextBlock Text="Входящий файл" Style="{StaticResource DialogTitle}" Margin="0,0,0,6"/>
+        <TextBlock x:Name="SubText" Style="{StaticResource DialogHint}" Margin="0,0,0,18"/>
+
+        <TextBlock Text="Ответное сообщение (необязательно)" Style="{StaticResource FieldLabel}"/>
+        <TextBox x:Name="CommentBox" MaxLength="500"
+                 ToolTip="Отправится отдельным сообщением вместе с решением о приёме файла"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button Content="Отклонить" Width="100" Margin="0,0,8,0"
+                    Style="{StaticResource SecondaryButton}" Click="Decline_Click"/>
+            <Button Content="Принять" Width="118"
+                    Style="{StaticResource PrimaryButton}" Click="Accept_Click" IsDefault="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

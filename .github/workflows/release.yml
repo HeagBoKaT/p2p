@@ -1,0 +1,39 @@
+name: Release
+
+# Собирает self-contained один-файл p2p.exe и публикует его как GitHub Release при пуше тега
+# вида v1.2.3. Версия тега должна совпадать с <Version> в p2p.csproj — именно её сравнивает
+# UpdateService в приложении, чтобы решить, есть ли обновление.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish single-file exe
+        run: dotnet publish p2p.csproj -c Release -o publish
+
+      - name: Rename artifact
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Copy-Item publish/p2p.exe "publish/p2p-$tag.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: publish/p2p-*.exe
+          generate_release_notes: true

@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <AssemblyName>p2p</AssemblyName>
+    <RootNamespace>p2p</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Product>АнтиПигвин</Product>
+    <AssemblyTitle>АнтиПигвин</AssemblyTitle>
+    <Company>АнтиПигвин</Company>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <!-- Упаковка в один самодостаточный файл. ВАЖНО: эти свойства действуют только для publish
+       (publish.cmd или `dotnet publish -c Release -o publish`). Обычный `dotnet build -c Release`
+       их игнорирует и всегда раскладывает рантайм на сотни файлов в bin\Release. -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Без отдельного .pdb в каталоге publish остаётся ровно один файл — p2p.exe. -->
+    <DebugType>none</DebugType>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <!-- UseWindowsForms injects global usings for System.Windows.Forms / System.Drawing that collide
+       with WPF's System.Windows types (Application, Message, Brush, DragEventArgs, ...). We only need
+       Forms/Drawing in a couple of files, addressed there via explicit `using Forms = ...` aliases. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+</Project>

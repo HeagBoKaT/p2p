@@ -1,0 +1,371 @@
+<Window x:Class="p2p.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="АнтиПигвин" Height="660" Width="1020"
+        MinHeight="440" MinWidth="740"
+        WindowStartupLocation="CenterScreen"
+        Icon="Assets/app.ico"
+        Background="White"
+        AllowDrop="True"
+        StateChanged="Window_StateChanged" Closing="Window_Closing"
+        DragEnter="Root_DragEnter" DragOver="Root_DragOver" DragLeave="Root_DragLeave" Drop="Root_Drop">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Баннер обновления: скрыт, пока не найдена более новая версия на GitHub Releases. -->
+        <Border Grid.Row="0" Background="{StaticResource AccentBrush}" Padding="16,8"
+                Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Подробнее" Padding="10,4" Margin="0,0,8,0"
+                            Background="Transparent" Foreground="White" BorderThickness="1" BorderBrush="White"
+                            Command="{Binding OpenReleasePageCommand}"/>
+                    <Button Content="Обновить и перезапустить" Padding="10,4" Margin="0,0,8,0"
+                            Background="White" Foreground="{StaticResource AccentBrush}" BorderThickness="0"
+                            Command="{Binding InstallUpdateCommand}"
+                            IsEnabled="{Binding UpdateInProgress, Converter={StaticResource InverseBoolean}}"/>
+                    <Button Content="✕" Padding="8,4" Background="Transparent" Foreground="White" BorderThickness="0"
+                            Command="{Binding DismissUpdateCommand}" ToolTip="Скрыть"
+                            Visibility="{Binding UpdateInProgress, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding BannerDisplayText}" VerticalAlignment="Center" Foreground="White" FontSize="12.5"/>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left panel -->
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Контакты" FontSize="15" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="16,16,16,12"/>
+
+                    <DockPanel Grid.Row="1" Margin="16,0,16,12">
+                        <Button DockPanel.Dock="Right" Content="+" Width="34" Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButton}" Padding="0"
+                                FontSize="16" FontWeight="SemiBold"
+                                Command="{Binding AddContactCommand}" ToolTip="Добавить контакт вручную по IP"/>
+                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Поиск по имени или ID"/>
+                    </DockPanel>
+
+                    <ListBox Grid.Row="2" ItemsSource="{Binding Contacts}"
+                             SelectedItem="{Binding SelectedContact}"
+                             BorderThickness="0" Background="Transparent"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="10,9"/>
+                                <Setter Property="Margin" Value="6,1"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Копировать ID"
+                                                      Command="{Binding DataContext.CopyContactIdCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="{Binding}"/>
+                                        </ContextMenu>
+                                    </Grid.ContextMenu>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="7" Height="7" Fill="{StaticResource OnlineBrush}" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="Medium" FontSize="13.5" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding LastMessagePreview}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"
+                                                   TextTrimming="CharacterEllipsis" Margin="13,2,0,0"/>
+                                    </StackPanel>
+
+                                    <Border Grid.Column="1" Background="#EF4444" CornerRadius="9" Padding="6,2"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding UnreadCount, Converter={StaticResource UnreadVisibility}}">
+                                        <TextBlock Text="{Binding UnreadCount}" Foreground="White" FontSize="10.5" FontWeight="SemiBold"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Обнаруженные по сети устройства, с которыми ещё не было переписки. Отдельно от
+                         «Контактов»: клик по устройству начинает диалог и переводит его в контакты. -->
+                    <Border Grid.Row="3" Padding="16,10" Background="{StaticResource PanelBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                            Visibility="{Binding Devices.Count, Converter={StaticResource UnreadVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="УСТРОЙСТВА В СЕТИ" FontSize="10.5" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}" Margin="6,0,0,8"/>
+                            <ItemsControl ItemsSource="{Binding Devices}" MaxHeight="176">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource LinkButton}" Cursor="Hand"
+                                                HorizontalContentAlignment="Stretch"
+                                                Command="{Binding DataContext.OpenDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Начать переписку с этим устройством">
+                                            <Border Padding="6,7" CornerRadius="6">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="Transparent"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="7" Height="7" Fill="{StaticResource OnlineBrush}"
+                                                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="13"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                        <TextBlock Text="{Binding IpAddress}" FontSize="10.5"
+                                                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="4" Padding="16,12" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Настройки" Padding="12,0" FontSize="12.5"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding OpenSettingsCommand}"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="26" Height="26" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MyName}" FontWeight="Medium" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding MyShortId, StringFormat=ID: {0}}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10.5"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Right panel -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Padding="16,12" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                        Style="{StaticResource ChatOnly}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding SelectedContact.DisplayName}" FontSize="14.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="{Binding SelectedContact.StatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <ListBox Grid.Row="1" x:Name="MessagesList" ItemsSource="{Binding Messages}"
+                         BorderThickness="0" Background="{StaticResource ChatBgBrush}" Padding="16,12"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0,2"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Focusable" Value="False"/>
+                            <!-- Plain container: messages aren't a selectable list, so skip the default
+                                 hover/selection chrome entirely (it looked like a stray highlight box). -->
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <ContentPresenter/>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="8" Margin="2" MaxWidth="540">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="HorizontalAlignment" Value="{Binding IsOutgoing, Converter={StaticResource MessageAlignment}}"/>
+                                        <Setter Property="Background" Value="{Binding IsOutgoing, Converter={StaticResource MessageBackground}}"/>
+                                        <Style.Triggers>
+                                            <!-- Служебные записи (принято/отклонено/отменено) не принадлежат ни одной
+                                                 стороне переписки, поэтому идут по центру приглушённым цветом. -->
+                                            <DataTrigger Binding="{Binding IsSystem}" Value="True">
+                                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                <Setter Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Копировать"
+                                                  Command="{Binding DataContext.CopyMessageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  CommandParameter="{Binding}"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14" Foreground="{StaticResource TextPrimaryBrush}"
+                                               Margin="13,8,13,0"
+                                               Visibility="{Binding IsFile, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
+
+                                    <Button Style="{StaticResource LinkButton}"
+                                            Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding IsFile, Converter={StaticResource BoolToVisibility}}"
+                                            ToolTip="Открыть файл в приложении по умолчанию">
+                                        <StackPanel Orientation="Horizontal" Margin="10,7,13,0">
+                                            <TextBlock Text="&#128196;" FontSize="15" VerticalAlignment="Center"/>
+                                            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="13"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="380"/>
+                                                <TextBlock Text="{Binding FileSizeText}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,12,8">
+                                        <TextBlock Text="ожидает отправки" FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                                   Margin="0,0,6,0"
+                                                   ToolTip="Собеседник офлайн. Сообщение уйдёт автоматически, когда он появится в сети."
+                                                   Visibility="{Binding Pending, Converter={StaticResource BoolToVisibility}}"/>
+                                        <TextBlock Text="{Binding TimeText}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="1" Text="Выберите контакт, чтобы начать переписку"
+                           FontSize="13" Foreground="{StaticResource TextMutedBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedContact}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <ItemsControl Grid.Row="2" ItemsSource="{Binding Transfers}" Margin="16,10,16,0"
+                              Style="{StaticResource ChatOnly}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="12,10" Margin="0,0,0,6" Background="White" CornerRadius="6"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding FileName}" FontWeight="Medium" FontSize="12"
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <ProgressBar Height="4" Minimum="0" Maximum="1" Value="{Binding Progress}" Margin="0,7,0,6"
+                                                 BorderThickness="0"
+                                                 Foreground="{StaticResource AccentBrush}" Background="{StaticResource SelectedBrush}"/>
+                                    <TextBlock Text="{Binding Converter={StaticResource TransferStatus}}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Высоты не задаются локально: поле ввода и кнопки берут общую метрику из стилей.
+                     Margin здесь зеркалит Padding="16,12" нижней панели профиля слева, поэтому
+                     обе строки получают одинаковую итоговую высоту (12 + 34 + 12). -->
+                <DockPanel Grid.Row="3" Margin="16,12,16,12" Style="{StaticResource ChatOnly}">
+                    <Button DockPanel.Dock="Right" Content="Отправить" Width="110"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding SendCommand}" Margin="8,0,0,0" IsDefault="True"/>
+                    <Button DockPanel.Dock="Right" Content="Файл…" Width="78"
+                            Style="{StaticResource SecondaryButton}"
+                            Command="{Binding AttachFileCommand}" Margin="8,0,0,0" ToolTip="Отправить файл"/>
+                    <TextBox x:Name="MessageInputBox"
+                             Text="{Binding MessageInput, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Введите сообщение… (или перетащите файл, Ctrl+V — вставить файл/изображение из буфера обмена)"
+                             PreviewKeyDown="MessageInputBox_PreviewKeyDown"/>
+                </DockPanel>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,6">
+            <TextBlock Text="{Binding StatusMessage}" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis" MinHeight="15"/>
+        </Border>
+
+        <!-- Drag & drop overlay -->
+        <Border x:Name="DropOverlay" Grid.Row="0" Grid.RowSpan="3" Background="#B34F46E5" Visibility="Collapsed" IsHitTestVisible="False">
+            <Border Background="White" CornerRadius="8" Padding="32,24"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Перетащите файлы сюда" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Файлы будут отправлены выбранному собеседнику" FontSize="12.5"
+                               Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

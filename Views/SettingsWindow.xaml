@@ -1,0 +1,28 @@
+<Window x:Class="p2p.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Настройки" Width="420" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        FocusManager.FocusedElement="{Binding ElementName=DisplayNameBox}">
+    <StackPanel Margin="24">
+        <TextBlock Text="Настройки" Style="{StaticResource DialogTitle}" Margin="0,0,0,18"/>
+
+        <TextBlock Text="Ваше имя" Style="{StaticResource FieldLabel}"/>
+        <TextBox x:Name="DisplayNameBox" MaxLength="40" Margin="0,0,0,16"/>
+
+        <TextBlock Text="Хранение истории, дней (1–30)" Style="{StaticResource FieldLabel}"/>
+        <TextBox x:Name="RetentionDaysBox" Margin="0,0,0,16"/>
+
+        <TextBlock Text="TCP-порт для сообщений" Style="{StaticResource FieldLabel}"/>
+        <TextBox x:Name="TcpPortBox"/>
+        <TextBlock Text="Изменение порта применится после перезапуска приложения."
+                   Style="{StaticResource DialogHint}" Margin="0,6,0,0"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button Content="Отмена" Width="92" Margin="0,0,8,0"
+                    Style="{StaticResource SecondaryButton}" IsCancel="True"/>
+            <Button Content="Сохранить" Width="118"
+                    Style="{StaticResource PrimaryButton}" Click="Save_Click" IsDefault="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

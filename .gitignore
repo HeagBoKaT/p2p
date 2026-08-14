@@ -1,0 +1,16 @@
+## .NET / WPF build output
+bin/
+obj/
+publish/
+*.user
+*.suo
+
+## Данные аккаунта, ключи, история — не должны попасть в репозиторий даже случайно
+/appdata/
+*.pfx
+*.snk
+
+## IDE
+.vs/
+.idea/
+*.DotSettings.user
