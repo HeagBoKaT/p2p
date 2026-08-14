@@ -1,0 +1,7 @@
+bin/
+obj/
+publish/
+testpublish_old/
+.git/
+.vs/
+.idea/
