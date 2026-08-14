@@ -24,7 +24,7 @@ public partial class App : Application
 
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-        var (portOverride, dataDir) = ParseArgs(e.Args);
+        var (portOverride, dataDir, autoAccountName, noDiscovery) = ParseArgs(e.Args);
 
         var storage = new StorageService(dataDir);
         var config = storage.LoadConfig();
@@ -34,15 +34,26 @@ public partial class App : Application
         var account = storage.LoadAccount();
         if (account is null)
         {
-            var setup = new AccountSetupWindow();
-            if (setup.ShowDialog() != true)
+            // --auto-account: для проверок и Docker-контейнеров без интерактивной desktop-сессии —
+            // диалог создания аккаунта там некому кликнуть. Только не для обычного запуска: без
+            // этого флага поведение для реального пользователя не меняется вовсе.
+            if (autoAccountName is not null)
             {
-                Shutdown();
-                return;
+                account = CreateAccount(autoAccountName);
+                storage.SaveAccount(account);
             }
+            else
+            {
+                var setup = new AccountSetupWindow();
+                if (setup.ShowDialog() != true)
+                {
+                    Shutdown();
+                    return;
+                }
 
-            account = CreateAccount(setup.DisplayName);
-            storage.SaveAccount(account);
+                account = CreateAccount(setup.DisplayName);
+                storage.SaveAccount(account);
+            }
         }
 
         string signingPrivateKey;
@@ -61,7 +72,13 @@ public partial class App : Application
         var history = new HistoryService(storage);
         history.PruneExpired(config.RetentionDays);
 
-        TryRegisterFirewallRules(config.TcpPort, config.DiscoveryPort);
+        // --no-discovery: то, из-за чего проверки на хосте раньше «шумели» в реальной LAN — этот
+        // UDP-маячок каждые 4 секунды делает тестовый аккаунт видимым всем настоящим устройствам
+        // в сети. Заодно пропускаем и правила брандмауэра — незачем плодить их для одноразовых
+        // тестовых запусков. TCP-соединения при этом продолжают работать как обычно (просто никто
+        // не узнает об этом экземпляре сам — можно законнектиться вручную через --data-dir/--port).
+        if (!noDiscovery)
+            TryRegisterFirewallRules(config.TcpPort, config.DiscoveryPort);
         var updates = new UpdateService();
 
         try
@@ -71,7 +88,8 @@ public partial class App : Application
             _fileTransfers = new FileTransferService(_connections);
             _outbox = new OutboxService(storage, _connections, _fileTransfers);
 
-            _discovery.Start();
+            if (!noDiscovery)
+                _discovery.Start();
             _connections.Start();
         }
         catch (Exception ex)
@@ -121,10 +139,12 @@ public partial class App : Application
         e.SetObserved();
     }
 
-    private static (int? Port, string? DataDir) ParseArgs(string[] args)
+    private static (int? Port, string? DataDir, string? AutoAccountName, bool NoDiscovery) ParseArgs(string[] args)
     {
         int? port = null;
         string? dataDir = null;
+        string? autoAccountName = null;
+        var noDiscovery = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -138,9 +158,18 @@ public partial class App : Application
                 dataDir = args[i + 1];
                 i++;
             }
+            else if (args[i] == "--auto-account" && i + 1 < args.Length)
+            {
+                autoAccountName = args[i + 1];
+                i++;
+            }
+            else if (args[i] == "--no-discovery")
+            {
+                noDiscovery = true;
+            }
         }
 
-        return (port, dataDir);
+        return (port, dataDir, autoAccountName, noDiscovery);
     }
 
     private static Account CreateAccount(string displayName)

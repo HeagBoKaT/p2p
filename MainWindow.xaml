@@ -96,11 +96,17 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid>
+                                <!-- Tag = хитрость для контекстного меню: ContextMenu открывается в отдельном
+                                     Popup-дереве, поэтому RelativeSource AncestorType=Window изнутри него окно
+                                     не находит (это известная особенность WPF, а не мелкая недоработка) — команда
+                                     оставалась несвязанной, и клик по пункту меню молча ничего не делал. Tag
+                                     привязывается здесь, в обычном дереве, где AncestorType=Window работает,
+                                     и достаётся из меню через PlacementTarget. -->
+                                <Grid Tag="{Binding RelativeSource={RelativeSource AncestorType=Window}}">
                                     <Grid.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Копировать ID"
-                                                      Command="{Binding DataContext.CopyContactIdCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      Command="{Binding PlacementTarget.Tag.DataContext.CopyContactIdCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding}"/>
                                         </ContextMenu>
                                     </Grid.ContextMenu>
@@ -241,7 +247,8 @@
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border CornerRadius="8" Margin="2" MaxWidth="540">
+                            <Border CornerRadius="8" Margin="2" MaxWidth="540"
+                                    Tag="{Binding RelativeSource={RelativeSource AncestorType=Window}}">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="HorizontalAlignment" Value="{Binding IsOutgoing, Converter={StaticResource MessageAlignment}}"/>
@@ -259,7 +266,7 @@
                                 <Border.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Копировать"
-                                                  Command="{Binding DataContext.CopyMessageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  Command="{Binding PlacementTarget.Tag.DataContext.CopyMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                   CommandParameter="{Binding}"/>
                                     </ContextMenu>
                                 </Border.ContextMenu>
